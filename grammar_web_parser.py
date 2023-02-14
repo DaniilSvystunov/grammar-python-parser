@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
-import json
 import asyncio
+import json
+import os
 import ssl
+from typing import Dict
+from urllib.parse import urlparse
 
 import aiofiles
 import aiohttp
@@ -16,15 +19,38 @@ class ParserBase(ABC):
 
     OUTPUT_FILE = "result.json"
 
+    OUTPUT_EXT = ".json"
+
+    def __init__(self):
+        """Init."""
+        self.target_filename = f"{self.site_domain_name}{self.OUTPUT_EXT}"
+
     def get_web_response(self, url: str):
+        """Makes request for the website and returns the response.
+
+        Args:
+            url (str): resourse url
+        """
         return requests.get(url)
 
     def get_bs4_response(self, url: str):
+        """Get the BeautifulSoup object.
+
+        Args:
+            url (str): resourse url
+        """
         return BeautifulSoup(self.get_web_response(url).content, self.PARSER_TYPE)
 
-    def write_json(self, data):
-        with open(self.OUTPUT_FILE, "w+") as file_json:
-            file_json.write(data)
+    def _write_json(self, data: Dict) -> None:
+        """Create and fill the file by given data.
+
+        Args:
+            data (Dict): dictionary as the result data
+        """
+        serialized_data = json.dumps(data)
+
+        with open(self.target_filename, "a+") as file_json:
+            file_json.write(serialized_data)
 
     async def get_web_async_response(self, session: aiohttp.ClientSession, url: str):
         async with session.get(url, ssl=ssl.SSLContext()) as resp:
@@ -34,9 +60,10 @@ class ParserBase(ABC):
         resp = await self.get_web_async_response(session, url)
         return BeautifulSoup(await resp.content, self.PARSER_TYPE)
 
-    def write_json(self):
+    def write_all(self) -> None:
+        """Create and write all the data at once."""
         data = self.parse()
-        with open(self.OUTPUT_FILE, "w+") as f:
+        with open(self.target_filename, "w+") as f:
             f.write(json.dumps(data))
 
     async def write_async_json(self, data):
@@ -45,7 +72,13 @@ class ParserBase(ABC):
 
     @abstractmethod
     def parse(self):
+        """Abstractmethod for the parser itself."""
         pass
+
+    @property
+    def site_domain_name(self):
+        """Extract domain from the URL."""
+        return urlparse(self.URL).netloc
 
 
 class ParserDictionaryCOM(ParserBase):
@@ -138,4 +171,4 @@ async def test():
 
 
 if __name__ == "__main__":
-    ParserDictionaryCOM().write_json()
+    ParserDictionaryCOM().write_all()
