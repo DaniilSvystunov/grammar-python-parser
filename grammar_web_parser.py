@@ -75,6 +75,7 @@ class ParserBase(ABC):
         """Abstractmethod for the parser itself."""
         pass
 
+    @classmethod
     @property
     def site_domain_name(self):
         """Extract domain from the URL."""
@@ -82,7 +83,7 @@ class ParserBase(ABC):
 
 
 class ParserDictionaryCOM(ParserBase):
-    """Class for parsing the content of https://www.dictionary.com/  website."""
+    """Class for parsing the content of https://www.dictionary.com/ website."""
 
     URL = GrammarWebSites.DICTIONARY_COM
 
@@ -154,21 +155,18 @@ class ParserDictionaryCOM(ParserBase):
 
                             description[res_descr] = _examples
 
-                        words_dict[value] = {
-                            "url": url,
-                            "description": description,
+                        _res = {
+                            value: {
+                                "url": url,
+                                "description": description,
+                            }
                         }
+
+                        words_dict.update(_res)
 
         return words_dict
 
 
-async def test():
-    async with aiohttp.ClientSession() as session:
-        res = await ParserDictionaryCOM().get_web_async_response(
-            session, "https://www.dictionary.com/browse/10"
-        )
-        print(res)
-
-
-if __name__ == "__main__":
-    ParserDictionaryCOM().write_all()
+PARSER_STORAGE = {
+    ParserDictionaryCOM.site_domain_name: ParserDictionaryCOM,
+}
